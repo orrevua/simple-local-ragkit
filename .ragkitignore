@@ -1,0 +1,13 @@
+# Sample .ragkitignore — patterns here are excluded from ingestion.
+# Same glob semantics as .gitignore.
+
+node_modules/
+dist/
+build/
+.next/
+.git/
+*.log
+*.tmp
+secrets/
+.env
+.env.*
