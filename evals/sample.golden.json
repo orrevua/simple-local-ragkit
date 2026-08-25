@@ -1,0 +1,20 @@
+{
+  "name": "sample",
+  "cases": [
+    {
+      "id": "offline-guarantee",
+      "query": "does ragkit work without internet",
+      "relevantSources": ["README.md"]
+    },
+    {
+      "id": "mcp-tools",
+      "query": "what tools does the mcp server expose",
+      "relevantSources": ["README.md", "docs/mcp-setup.md"]
+    },
+    {
+      "id": "explain-mode",
+      "query": "how do I see why an answer was assembled",
+      "relevantSources": ["README.md"]
+    }
+  ]
+}

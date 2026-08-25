@@ -49,6 +49,10 @@ export class DimensionMismatchError extends RagError {
   }
 }
 
+export class EvalDatasetError extends RagError {
+  readonly code = "EVAL_DATASET_INVALID";
+}
+
 export class VecExtensionError extends RagError {
   readonly code = "VEC_EXTENSION_LOAD_FAILED";
 

@@ -5,6 +5,7 @@ import * as log from "../core/logger.js";
 import { runIngest } from "./commands/ingest.js";
 import { runInit } from "./commands/init.js";
 import { runQuery } from "./commands/query.js";
+import { runEval } from "./commands/eval.js";
 import { runStats } from "./commands/stats.js";
 import { runDoctor } from "./commands/doctor.js";
 import { runMcp } from "./commands/mcp.js";
@@ -95,6 +96,31 @@ export function buildProgram(): Command {
             collection: g.collection,
             topK: opts.topK,
             explain: opts.explain,
+            json: opts.json,
+          });
+        } catch (err) {
+          fail(err);
+        }
+      },
+    );
+
+  program
+    .command("eval")
+    .description("Score retrieval against a golden dataset (hit, MRR, nDCG).")
+    .argument("<dataset>", "path to a golden dataset JSON file")
+    .option("--top-k <n>", "retrieval cutoff k", (v) => parseInt(v, 10))
+    .option("--json", "print the full report as JSON to stdout", false)
+    .action(
+      async (
+        dataset: string,
+        opts: { topK?: number; json?: boolean },
+        cmd: Command,
+      ) => {
+        const g = globals(cmd);
+        try {
+          await runEval(process.cwd(), dataset, {
+            collection: g.collection,
+            topK: opts.topK,
             json: opts.json,
           });
         } catch (err) {
