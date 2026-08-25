@@ -45,10 +45,12 @@ export default defineConfig({
       contextTokens: 4000,
       rrfK: 60,
     });
+    // baseUrl stays unset in config; the embedder resolves it from the option,
+    // the OLLAMA_BASE_URL env var, then the built-in default (preserving that
+    // precedence).
     expect(config.embeddings).toEqual({
       provider: "ollama",
       model: "nomic-embed-text",
-      baseUrl: "http://localhost:11434",
     });
     expect(config.ignore).toEqual([]);
   });
