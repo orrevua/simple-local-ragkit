@@ -76,6 +76,24 @@ assembled. The explain output shows the dense and lexical candidate legs,
 their ranks and raw scores, the RRF fusion step, and the final context budget
 decisions that kept or dropped chunks.
 
+## Retrieval eval
+
+RAG quality is retrieval quality. `ragkit eval` scores the hybrid retriever
+against a golden dataset so changes to chunking, fusion, or `topK` can be
+compared with numbers instead of vibes:
+
+```powershell
+npm run ragkit -- eval evals/sample.golden.json --top-k 8
+```
+
+Relevance is anchored to the document **source**, not chunk ids — chunk ids
+depend on the chunking strategy, so a source-anchored golden set stays valid
+across chunkers and reindexes. Each case is
+`{ id, query, relevantSources }`; the report gives Hit Rate, MRR, nDCG, and
+context precision/recall per case plus an aggregate mean. The metrics are
+deterministic and need no LLM, so `eval` can gate CI. Add `--json` for the full
+machine-readable report.
+
 ## MCP server
 
 `ragkit mcp` runs a Model Context Protocol server over stdio, exposing three
