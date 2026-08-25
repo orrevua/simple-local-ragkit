@@ -141,8 +141,3 @@ Equivalent `mcpServers` entry (e.g. `~/.claude.json` or a client's MCP config):
 
 See [`docs/mcp-setup.md`](docs/mcp-setup.md) for scopes, troubleshooting, and the
 full protocol-purity contract.
-
-## Backlog
-
-The current deferred items live in [`docs/BACKLOG.md`](docs/BACKLOG.md):
-pgvector, evals, HTTP API, and a web panel are intentionally out of MVP scope.
