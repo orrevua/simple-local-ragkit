@@ -12,3 +12,4 @@ docs/specs/
 docs/BACKLOG.md
 docs/HANDOFF.md
 docs/reviews/
+__pycache__/
