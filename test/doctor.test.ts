@@ -78,3 +78,15 @@ describe("doctor runChecks", () => {
     );
   });
 });
+
+describe("doctor with non-Ollama providers", () => {
+  it("skips the Ollama checks for the hash provider", async () => {
+    const cfg = { ...config(), embeddings: { ...config().embeddings, provider: "hash" as const } };
+    const fetchNever: FetchLike = async () => {
+      throw new Error("should not be called");
+    };
+    const results = await runChecks(cfg, fetchNever);
+    expect(results[0]).toMatchObject({ name: "embeddings", ok: true });
+    expect(results.some((r) => r.name === "ollama reachable")).toBe(false);
+  });
+});

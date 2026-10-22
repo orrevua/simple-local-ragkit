@@ -129,6 +129,30 @@ export async function runChecks(
   config: RagConfig,
   fetchImpl: FetchLike,
 ): Promise<CheckResult[]> {
+  const { provider, apiKeyEnv } = config.embeddings;
+  if (provider === "hash") {
+    return [
+      {
+        name: "embeddings",
+        ok: true,
+        detail: "hash provider: offline, nothing to check.",
+      },
+      checkDb(config),
+    ];
+  }
+  if (provider === "openai") {
+    const hasKey = Boolean(process.env[apiKeyEnv]);
+    return [
+      {
+        name: "embeddings api key",
+        ok: hasKey || Boolean(config.embeddings.baseUrl),
+        detail: hasKey
+          ? `${apiKeyEnv} is set.`
+          : `${apiKeyEnv} is not set (fine only for keyless local servers).`,
+      },
+      checkDb(config),
+    ];
+  }
   const { reachable, model } = await checkOllama(config, fetchImpl);
   return [reachable, model, checkDb(config)];
 }
