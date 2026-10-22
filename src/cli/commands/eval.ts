@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { z } from "zod";
 import { loadConfig } from "../../config.js";
-import { OllamaEmbeddings } from "../../core/embedder.js";
+import { createEmbedder } from "../../core/providers.js";
 import {
   evaluate,
   formatReportMarkdown,
@@ -75,10 +75,7 @@ export async function runEval(
 
   const { db, store } = openStore(config.dbPath);
   try {
-    const embedder = new OllamaEmbeddings(db, {
-      model: config.embeddings.model,
-      baseUrl: config.embeddings.baseUrl,
-    });
+    const embedder = createEmbedder(config, db);
     const retriever = new HybridRetriever({ store, embedder, config });
 
     const report = await evaluate(retriever, dataset, k);

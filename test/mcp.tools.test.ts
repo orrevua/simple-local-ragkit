@@ -56,6 +56,7 @@ class FakeRetriever implements Retriever {
       results: this.results,
       explain: {
         query,
+        strategy: "hybrid",
         topK: 8,
         rrfK: 60,
         minScore: 0,

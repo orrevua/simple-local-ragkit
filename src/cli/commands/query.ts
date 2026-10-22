@@ -1,6 +1,6 @@
 import { loadConfig } from "../../config.js";
 import { buildContext, type BuiltContext } from "../../core/context.js";
-import { OllamaEmbeddings } from "../../core/embedder.js";
+import { createEmbedder } from "../../core/providers.js";
 import { HybridRetriever } from "../../core/retriever.js";
 import type {
   HybridSearchResult,
@@ -142,10 +142,7 @@ export async function runQuery(
   const config = await loadConfig(cwd);
   const { db, store } = openStore(config.dbPath);
   try {
-    const embedder = new OllamaEmbeddings(db, {
-      model: config.embeddings.model,
-      baseUrl: config.embeddings.baseUrl,
-    });
+    const embedder = createEmbedder(config, db);
     const retriever = new HybridRetriever({ store, embedder, config });
 
     const search = await retriever.hybridSearch(query, {

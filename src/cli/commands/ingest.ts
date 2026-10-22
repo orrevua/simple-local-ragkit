@@ -7,7 +7,7 @@ import {
   SqliteStore,
   type Db,
 } from "../../core/store.js";
-import { OllamaEmbeddings } from "../../core/embedder.js";
+import { createEmbedder } from "../../core/providers.js";
 import { resolveRoots } from "../../core/loaders.js";
 import { watchRoots, type WatchEvent } from "../../core/watch.js";
 import * as log from "../../core/logger.js";
@@ -42,10 +42,7 @@ export async function runIngest(
   const collection = options.collection ?? config.collection;
 
   const { db, store } = openStore(config.dbPath);
-  const embedder = new OllamaEmbeddings(db, {
-    model: config.embeddings.model,
-    baseUrl: config.embeddings.baseUrl,
-  });
+  const embedder = createEmbedder(config, db);
 
   const paths = targetPath ? [targetPath] : undefined;
   log.info(

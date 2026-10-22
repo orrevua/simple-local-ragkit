@@ -44,6 +44,7 @@ export default defineConfig({
       minScore: 0.3,
       contextTokens: 4000,
       rrfK: 60,
+      strategy: "hybrid",
     });
     // baseUrl stays unset in config; the embedder resolves it from the option,
     // the OLLAMA_BASE_URL env var, then the built-in default (preserving that
@@ -51,6 +52,7 @@ export default defineConfig({
     expect(config.embeddings).toEqual({
       provider: "ollama",
       model: "nomic-embed-text",
+      apiKeyEnv: "OPENAI_API_KEY",
     });
     expect(config.ignore).toEqual([]);
   });

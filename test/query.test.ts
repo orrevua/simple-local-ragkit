@@ -31,6 +31,7 @@ function search(): HybridSearchResult {
     results,
     explain: {
       query: "hello",
+      strategy: "hybrid",
       topK: 8,
       rrfK: 60,
       minScore: 0.3,

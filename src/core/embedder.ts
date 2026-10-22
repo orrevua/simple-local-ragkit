@@ -33,7 +33,7 @@ function isConnectionRefused(err: unknown): boolean {
   return code === "ECONNREFUSED";
 }
 
-class SqliteEmbeddingCache implements EmbeddingCache {
+export class SqliteEmbeddingCache implements EmbeddingCache {
   constructor(private readonly db: Db) {}
 
   get(textHash: string, model: string): number[] | undefined {

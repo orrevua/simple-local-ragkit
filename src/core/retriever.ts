@@ -1,4 +1,5 @@
 import type { RagConfig } from "../config.js";
+import { TermCoverageReranker, type Reranker } from "./reranker.js";
 import type {
   EmbeddingProvider,
   HybridExplain,
@@ -6,6 +7,8 @@ import type {
   HybridSearchResult,
   MetadataFilter,
   RankedResult,
+  RerankEntry,
+  RetrievalStrategy,
   Retriever,
   RrfEntry,
   SearchResult,
@@ -16,7 +19,45 @@ export type HybridRetrieverDeps = {
   store: Store;
   embedder: EmbeddingProvider;
   config: RagConfig;
+  reranker?: Reranker;
 };
+
+/**
+ * Retrieval presets, from simplest to richest. Each one is selectable with
+ * `--strategy` and comparable side by side with `ragkit eval --compare`.
+ */
+export const RETRIEVAL_STRATEGIES: Record<
+  RetrievalStrategy,
+  { dense: boolean; lexical: boolean; rerank: boolean; description: string }
+> = {
+  dense: {
+    dense: true,
+    lexical: false,
+    rerank: false,
+    description: "vector similarity only",
+  },
+  lexical: {
+    dense: false,
+    lexical: true,
+    rerank: false,
+    description: "BM25 full-text only",
+  },
+  hybrid: {
+    dense: true,
+    lexical: true,
+    rerank: false,
+    description: "dense + BM25 fused with Reciprocal Rank Fusion",
+  },
+  "hybrid-rerank": {
+    dense: true,
+    lexical: true,
+    rerank: true,
+    description: "hybrid, then a reranker reorders the fused pool",
+  },
+};
+
+/** How much the reranker score weighs against the normalized fused score. */
+const RERANK_WEIGHT = 0.7;
 
 type FusionEntry = {
   chunkId: string;
@@ -50,18 +91,21 @@ function matchesFilter(
 
 /**
  * Hybrid retriever: dense (vector) + lexical (BM25) legs fused with Reciprocal
- * Rank Fusion. Depends only on the abstract `Store` and `EmbeddingProvider`
+ * Rank Fusion, optionally followed by a reranking stage. The strategy decides
+ * which of those stages run. Depends only on the abstract `Store` and `EmbeddingProvider`
  * interfaces (R11) so alternative backends can be swapped without changes here.
  */
 export class HybridRetriever implements Retriever {
   private readonly store: Store;
   private readonly embedder: EmbeddingProvider;
   private readonly config: RagConfig;
+  private readonly reranker: Reranker;
 
   constructor(deps: HybridRetrieverDeps) {
     this.store = deps.store;
     this.embedder = deps.embedder;
     this.config = deps.config;
+    this.reranker = deps.reranker ?? new TermCoverageReranker();
   }
 
   async hybridSearch(
@@ -71,10 +115,17 @@ export class HybridRetriever implements Retriever {
     const { topK: cfgTopK, minScore, rrfK } = this.config.retrieval;
     const topK = options.topK ?? cfgTopK;
     const candidateK = topK * 3;
+    const strategy = options.strategy ?? this.config.retrieval.strategy;
+    const legs = RETRIEVAL_STRATEGIES[strategy];
 
-    const [queryVec] = await this.embedder.embed([query]);
-    const dense = queryVec ? this.store.denseSearch(queryVec, candidateK) : [];
-    const lexical = this.store.lexicalSearch(query, candidateK);
+    let dense: SearchResult[] = [];
+    if (legs.dense) {
+      const [queryVec] = await this.embedder.embed([query]);
+      dense = queryVec ? this.store.denseSearch(queryVec, candidateK) : [];
+    }
+    const lexical = legs.lexical
+      ? this.store.lexicalSearch(query, candidateK)
+      : [];
 
     const fusion = new Map<string, FusionEntry>();
     const contribute = (
@@ -118,17 +169,56 @@ export class HybridRetriever implements Retriever {
 
     entries.sort((a, b) => b.fusedScore - a.fusedScore);
 
+    // Score each candidate on a 0..1 scale. Without a reranker that is just
+    // the fused score normalized by the best one; with a reranker it blends
+    // the reranker's opinion with the fused evidence.
+    let ranked = entries.map((e) => ({
+      entry: e,
+      score: e.fusedScore,
+      normalizedScore: maxFusedScore > 0 ? e.fusedScore / maxFusedScore : 0,
+    }));
+
+    let rerank: HybridExplain["rerank"];
+    if (legs.rerank && ranked.length > 0) {
+      const pool = ranked.slice(0, candidateK);
+      const scores = await this.reranker.score(
+        query,
+        pool.map((r) => r.entry.result.chunk),
+      );
+      const rerankEntries: RerankEntry[] = pool.map((r, i) => {
+        const finalScore =
+          RERANK_WEIGHT * scores[i]! + (1 - RERANK_WEIGHT) * r.normalizedScore;
+        return {
+          chunkId: r.entry.chunkId,
+          fusedRank: i + 1,
+          rerankScore: scores[i]!,
+          finalScore,
+        };
+      });
+      ranked = pool
+        .map((r, i) => ({
+          entry: r.entry,
+          score: rerankEntries[i]!.finalScore,
+          normalizedScore: rerankEntries[i]!.finalScore,
+        }))
+        .sort((a, b) => b.score - a.score);
+      const best = ranked[0]!.score;
+      if (best > 0) {
+        for (const r of ranked) r.normalizedScore = r.score / best;
+      }
+      rerankEntries.sort((a, b) => b.finalScore - a.finalScore);
+      rerank = { reranker: this.reranker.name, entries: rerankEntries };
+    }
+
     const results: RankedResult[] = [];
-    for (const e of entries) {
-      const normalizedScore =
-        maxFusedScore > 0 ? e.fusedScore / maxFusedScore : 0;
-      if (normalizedScore < minScore) continue;
+    for (const r of ranked) {
+      if (r.normalizedScore < minScore) continue;
       results.push({
-        chunkId: e.chunkId,
+        chunkId: r.entry.chunkId,
         rank: results.length + 1,
-        score: e.fusedScore,
-        normalizedScore,
-        chunk: e.result.chunk,
+        score: r.score,
+        normalizedScore: r.normalizedScore,
+        chunk: r.entry.result.chunk,
       });
       if (results.length >= topK) break;
     }
@@ -143,6 +233,7 @@ export class HybridRetriever implements Retriever {
 
     const explain: HybridExplain = {
       query,
+      strategy,
       topK,
       rrfK,
       minScore,
@@ -150,6 +241,7 @@ export class HybridRetriever implements Retriever {
       lexical,
       fused,
       maxFusedScore,
+      ...(rerank ? { rerank } : {}),
     };
 
     return { results, explain };

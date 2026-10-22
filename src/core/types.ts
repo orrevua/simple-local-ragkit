@@ -74,9 +74,13 @@ export type MetadataFilter = Record<
   string | number | boolean | { $in: Array<string | number | boolean> }
 >;
 
+export type RetrievalStrategy = "dense" | "lexical" | "hybrid" | "hybrid-rerank";
+
 export type HybridSearchOptions = {
   topK?: number;
   filter?: MetadataFilter;
+  /** Overrides `config.retrieval.strategy` for this call. */
+  strategy?: RetrievalStrategy;
 };
 
 /** A fused, ranked chunk with its normalized score and the RRF breakdown. */
@@ -97,8 +101,17 @@ export type RrfEntry = {
   normalizedScore: number;
 };
 
+/** Per-chunk reranker decision, for `--explain`. */
+export type RerankEntry = {
+  chunkId: string;
+  fusedRank: number;
+  rerankScore: number;
+  finalScore: number;
+};
+
 export type HybridExplain = {
   query: string;
+  strategy: RetrievalStrategy;
   topK: number;
   rrfK: number;
   minScore: number;
@@ -106,6 +119,8 @@ export type HybridExplain = {
   lexical: SearchResult[];
   fused: RrfEntry[];
   maxFusedScore: number;
+  /** Present only for strategies that rerank. */
+  rerank?: { reranker: string; entries: RerankEntry[] };
 };
 
 export type HybridSearchResult = {

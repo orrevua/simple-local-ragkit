@@ -10,9 +10,15 @@ export const RagConfigSchema = z.object({
   roots: z.array(z.string()).default([]),
   embeddings: z
     .object({
-      provider: z.string().default("ollama"),
+      // ollama: local server (default). openai: any OpenAI-compatible
+      // /v1/embeddings endpoint (OpenAI, LM Studio, vLLM...). hash: offline,
+      // deterministic, no model at all; for tests, CI and learning.
+      provider: z.enum(["ollama", "openai", "hash"]).default("ollama"),
       model: z.string().default("nomic-embed-text"),
       baseUrl: z.string().optional(),
+      // Name of the env var holding the API key (openai provider only), so
+      // the secret never lives in the config file.
+      apiKeyEnv: z.string().default("OPENAI_API_KEY"),
     })
     .default({}),
   chunking: z
@@ -27,6 +33,11 @@ export const RagConfigSchema = z.object({
       minScore: z.number().default(0.3),
       contextTokens: z.number().int().positive().default(4000),
       rrfK: z.number().int().positive().default(60),
+      // Which legs run and whether a reranker reorders the fused pool. See
+      // `RETRIEVAL_STRATEGIES` in core/retriever.ts.
+      strategy: z
+        .enum(["dense", "lexical", "hybrid", "hybrid-rerank"])
+        .default("hybrid"),
     })
     .default({}),
   ignore: z.array(z.string()).default([]),

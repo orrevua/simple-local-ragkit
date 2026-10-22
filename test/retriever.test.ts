@@ -179,3 +179,43 @@ describe("HybridRetriever interface purity (R11)", () => {
     expect(src).not.toMatch(/from ["'].*\/embedder\.js/);
   });
 });
+
+describe("HybridRetriever strategies (presets)", () => {
+  it("dense and lexical strategies use only their own leg", async () => {
+    const r = makeRetriever(results(["a"]), results(["b"]));
+
+    const dense = await r.hybridSearch("q", { strategy: "dense" });
+    const lexical = await r.hybridSearch("q", { strategy: "lexical" });
+
+    expect(dense.results.map((x) => x.chunkId)).toEqual(["a"]);
+    expect(dense.explain.lexical).toEqual([]);
+    expect(lexical.results.map((x) => x.chunkId)).toEqual(["b"]);
+    expect(lexical.explain.dense).toEqual([]);
+    expect(lexical.explain.strategy).toBe("lexical");
+  });
+
+  it("hybrid-rerank lets the reranker reorder the fused pool", async () => {
+    const r = new HybridRetriever({
+      store: new FakeStore(results(["a"], ["b"]), []),
+      embedder: new FakeEmbedder(),
+      config: config({ minScore: 0 }),
+      reranker: {
+        name: "prefers-b",
+        score: async (_q, chunks) => chunks.map((c) => (c.id === "b" ? 1 : 0)),
+      },
+    });
+
+    const plain = await r.hybridSearch("q", { strategy: "hybrid" });
+    const reranked = await r.hybridSearch("q", { strategy: "hybrid-rerank" });
+
+    expect(plain.results[0]!.chunkId).toBe("a");
+    expect(reranked.results[0]!.chunkId).toBe("b");
+    expect(reranked.explain.rerank?.reranker).toBe("prefers-b");
+    expect(reranked.explain.rerank?.entries[0]).toMatchObject({
+      chunkId: "b",
+      fusedRank: 2,
+      rerankScore: 1,
+    });
+    expect(plain.explain.rerank).toBeUndefined();
+  });
+});

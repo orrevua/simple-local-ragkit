@@ -1,6 +1,6 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { loadConfig } from "../../config.js";
-import { OllamaEmbeddings } from "../../core/embedder.js";
+import { createEmbedder } from "../../core/providers.js";
 import { RagError } from "../../core/errors.js";
 import * as log from "../../core/logger.js";
 import { HybridRetriever } from "../../core/retriever.js";
@@ -36,10 +36,7 @@ export async function runMcp(
   })();
 
   try {
-    const embedder = new OllamaEmbeddings(db, {
-      model: config.embeddings.model,
-      baseUrl: config.embeddings.baseUrl,
-    });
+    const embedder = createEmbedder(config, db);
     const retriever = new HybridRetriever({ store, embedder, config });
     const server = createServer({ store, retriever, config, collection });
     await server.connect(new StdioServerTransport());
