@@ -127,6 +127,7 @@ export function buildProgram(): Command {
     .option("--json", "print the full report as JSON to stdout", false)
     .addOption(strategyOption())
     .option("--compare", "run every strategy and print a side-by-side table", false)
+    .option("--fail-under <rate>", "exit 1 if hit rate is below this (CI gate)", parseFloat)
     .action(
       async (
         dataset: string,
@@ -135,6 +136,7 @@ export function buildProgram(): Command {
           json?: boolean;
           strategy?: RetrievalStrategy;
           compare?: boolean;
+          failUnder?: number;
         },
         cmd: Command,
       ) => {
@@ -146,6 +148,7 @@ export function buildProgram(): Command {
             json: opts.json,
             strategy: opts.strategy,
             compare: opts.compare,
+            failUnder: opts.failUnder,
           });
         } catch (err) {
           fail(err);

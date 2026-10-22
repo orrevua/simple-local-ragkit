@@ -22,6 +22,8 @@ export type EvalCommandOptions = {
   json?: boolean;
   strategy?: RetrievalStrategy;
   compare?: boolean;
+  /** Exit non-zero when the aggregate hit rate is below this (CI gate). */
+  failUnder?: number;
 };
 
 const DatasetSchema = z.object({
@@ -107,6 +109,16 @@ export async function runEval(
       ? JSON.stringify(report, null, 2)
       : formatReportMarkdown(report);
     process.stdout.write(`${output}\n`);
+
+    if (
+      options.failUnder !== undefined &&
+      report.aggregate.hitRate < options.failUnder
+    ) {
+      throw new EvalDatasetError(
+        `Hit rate ${report.aggregate.hitRate.toFixed(3)} is below the ` +
+          `--fail-under threshold ${options.failUnder}.`,
+      );
+    }
   } finally {
     db.close();
   }

@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit -p tsconfig.json
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+      # Retrieval quality gate: offline (hash embeddings), so it needs no model
+      # and is deterministic. A PR that degrades retrieval fails here.
+      - name: Retrieval eval gate
+        working-directory: examples/fastapi-docs
+        run: |
+          ./fetch-docs.sh
+          node ../../dist/cli/index.js ingest
+          node ../../dist/cli/index.js eval golden.json --compare --top-k 5
+          node ../../dist/cli/index.js eval golden.json --strategy hybrid-rerank --top-k 5 --fail-under 0.9

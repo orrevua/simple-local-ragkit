@@ -141,3 +141,74 @@ Equivalent `mcpServers` entry (e.g. `~/.claude.json` or a client's MCP config):
 
 See [`docs/mcp-setup.md`](docs/mcp-setup.md) for scopes, troubleshooting, and the
 full protocol-purity contract.
+
+## Embedding providers
+
+Set `embeddings.provider` in `ragkit.config.ts`:
+
+| provider | runs where | when to use it |
+| --- | --- | --- |
+| `ollama` (default) | local Ollama server | private, offline, real semantic embeddings |
+| `openai` | any OpenAI-compatible `/v1/embeddings` API (OpenAI, LM Studio, vLLM...) | hosted or GPU-backed models; key read from the env var named in `apiKeyEnv` |
+| `hash` | in-process, no model | tests, CI, demos, and as a lexical baseline to measure what a real model adds |
+
+The vector table is 768-d, so every provider must return 768 dimensions
+(`nomic-embed-text` does natively; `text-embedding-3-small` does via its
+`dimensions` parameter, which ragkit always sends). After switching providers,
+run `ragkit init --force` and re-ingest: vectors from different models are not
+comparable.
+
+## Retrieval strategies
+
+Every retrieval command takes `--strategy` (or set `retrieval.strategy`):
+
+| strategy | pipeline |
+| --- | --- |
+| `dense` | vector similarity only |
+| `lexical` | BM25 over SQLite FTS5 only |
+| `hybrid` (default) | both legs fused with Reciprocal Rank Fusion |
+| `hybrid-rerank` | hybrid, then a reranker re-scores the fused candidate pool |
+
+The built-in reranker (`term-coverage`) is offline and explainable: it rewards
+chunks that cover *all* the question's content words, with a bonus for words
+in the heading path. Any cross-encoder can be plugged in through the
+`Reranker` interface in `src/core/reranker.ts`.
+
+Compare them on your own golden set:
+
+```bash
+ragkit eval evals/my.golden.json --compare --top-k 5
+```
+
+[`examples/fastapi-docs`](examples/fastapi-docs) is a ready-made playground: a
+pinned public corpus, a 25-question golden set, and baseline numbers.
+
+## HTTP API
+
+For clients that don't speak MCP (a web app, a Python agent, curl):
+
+```bash
+ragkit serve --port 8787            # binds 127.0.0.1
+curl -s localhost:8787/search -d '{"query":"how do I add CORS?","topK":3,"strategy":"hybrid-rerank"}'
+```
+
+| route | purpose |
+| --- | --- |
+| `GET /health` | liveness (never authenticated) |
+| `GET /collections` | collections with counts |
+| `POST /search` | `{ query, topK?, strategy?, filter? }` → ranked results, context block, citations |
+| `GET /documents?source=path.md` | chunks of one document |
+
+Set `RAGKIT_API_TOKEN` to require `Authorization: Bearer <token>` on every
+route except `/health`. [`examples/python`](examples/python) has a stdlib-only
+client and a LangChain retriever adapter. See
+[`docs/deploy.md`](docs/deploy.md) to run it on a server.
+
+## Learning mode
+
+- `ragkit chunks <file> [--size n --overlap n]` shows where a file would be
+  split, with headings and token counts, without touching the database.
+- `ragkit query "..." --explain` shows each leg's candidates, the RRF math,
+  reranker decisions and the token-budget cuts.
+- [`LEARNING.md`](LEARNING.md) is a guided tour of the codebase, with
+  exercises.
