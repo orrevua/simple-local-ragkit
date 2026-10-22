@@ -128,6 +128,18 @@ function rowToChunk(row: ChunkRow): Chunk {
   };
 }
 
+/**
+ * Turn free text into a safe FTS5 query. FTS5 has its own query syntax, so a
+ * raw natural-language question ("what's the port?") is a syntax error. We keep
+ * only word tokens, quote each one (so `AND`/`NOT` lose their operator meaning)
+ * and OR them together: BM25 then rewards chunks matching more and rarer terms.
+ */
+export function toFtsQuery(text: string): string {
+  const tokens = text.toLowerCase().match(/[\p{L}\p{N}_]+/gu) ?? [];
+  const unique = [...new Set(tokens)];
+  return unique.map((t) => `"${t}"`).join(" OR ");
+}
+
 function f32Blob(values: number[]): Buffer {
   return Buffer.from(new Float32Array(values).buffer);
 }
@@ -286,6 +298,8 @@ export class SqliteStore implements Store {
   }
 
   lexicalSearch(query: string, k: number): SearchResult[] {
+    const ftsQuery = toFtsQuery(query);
+    if (ftsQuery === "") return [];
     const rows = this.db
       .prepare(
         `SELECT c.id, c.document_id, c.idx, c.text, c.heading_path,
@@ -299,7 +313,7 @@ export class SqliteStore implements Store {
           ORDER BY score
           LIMIT ?`,
       )
-      .all(query, k) as Array<ChunkRow & { score: number }>;
+      .all(ftsQuery, k) as Array<ChunkRow & { score: number }>;
     return rows.map((row, i) => ({
       chunkId: row.id,
       rank: i + 1,

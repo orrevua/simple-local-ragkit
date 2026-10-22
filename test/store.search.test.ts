@@ -4,6 +4,7 @@ import {
   loadVecExtension,
   migrate,
   SqliteStore,
+  toFtsQuery,
   type Db,
 } from "../src/core/store.js";
 import type { Chunk, Document } from "../src/core/types.js";
@@ -109,5 +110,32 @@ describe("SqliteStore.lexicalSearch (R1)", () => {
     expect(results.map((r) => r.chunkId)).toEqual(["c1", "c2"]);
     expect(results.map((r) => r.rank)).toEqual([1, 2]);
     expect(results[0]!.rawScore).toBeLessThanOrEqual(results[1]!.rawScore);
+  });
+});
+
+describe("toFtsQuery / natural-language lexical queries", () => {
+  it("quotes word tokens and ORs them, dropping FTS5 syntax", () => {
+    expect(toFtsQuery("what's the C++ port?")).toBe(
+      '"what" OR "s" OR "the" OR "c" OR "port"',
+    );
+    expect(toFtsQuery("?? !!")).toBe("");
+  });
+
+  it("does not throw on punctuation and still finds the chunk", () => {
+    const store = newStore();
+    store.insertDocument(doc());
+    store.replaceChunks(
+      "doc-1",
+      [
+        chunk("c1", 0, "configure the server port with an env var"),
+        chunk("c2", 1, "unrelated content"),
+      ],
+      [vec(0), vec(1)],
+    );
+
+    const results = store.lexicalSearch("How do I configure the port?", 5);
+
+    expect(results[0]!.chunkId).toBe("c1");
+    expect(store.lexicalSearch("???", 5)).toEqual([]);
   });
 });
