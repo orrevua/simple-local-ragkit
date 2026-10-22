@@ -9,6 +9,8 @@ import { runEval } from "./commands/eval.js";
 import { runStats } from "./commands/stats.js";
 import { runDoctor } from "./commands/doctor.js";
 import { runMcp } from "./commands/mcp.js";
+import { runServe } from "./commands/serve.js";
+import { runChunks } from "./commands/chunks.js";
 import { RETRIEVAL_STRATEGIES } from "../core/retriever.js";
 import type { RetrievalStrategy } from "../core/types.js";
 
@@ -186,6 +188,44 @@ export function buildProgram(): Command {
         fail(err);
       }
     });
+
+  program
+    .command("serve")
+    .description("Serve the collection as a JSON HTTP API (/search, /documents).")
+    .option("--host <host>", "interface to bind", "127.0.0.1")
+    .option("-p, --port <n>", "port to listen on", (v) => parseInt(v, 10), 8787)
+    .action(async (opts: { host: string; port: number }, cmd: Command) => {
+      const g = globals(cmd);
+      try {
+        await runServe(process.cwd(), {
+          collection: g.collection,
+          host: opts.host,
+          port: opts.port,
+        });
+      } catch (err) {
+        fail(err);
+      }
+    });
+
+  program
+    .command("chunks")
+    .description("Learning mode: show how a file would be chunked (no indexing).")
+    .argument("<file>", "file to chunk")
+    .option("--size <n>", "chunk size in tokens", (v) => parseInt(v, 10))
+    .option("--overlap <n>", "overlap in tokens", (v) => parseInt(v, 10))
+    .option("--full", "print full chunk text instead of a preview", false)
+    .action(
+      async (
+        file: string,
+        opts: { size?: number; overlap?: number; full?: boolean },
+      ) => {
+        try {
+          await runChunks(process.cwd(), file, opts);
+        } catch (err) {
+          fail(err);
+        }
+      },
+    );
 
   return program;
 }
