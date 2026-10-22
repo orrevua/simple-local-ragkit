@@ -5,6 +5,7 @@ import { HybridRetriever } from "../../core/retriever.js";
 import type {
   HybridSearchResult,
   MetadataFilter,
+  RetrievalStrategy,
   SearchResult,
 } from "../../core/types.js";
 import { openStore } from "./ingest.js";
@@ -14,6 +15,7 @@ export type QueryCommandOptions = {
   topK?: number;
   explain?: boolean;
   json?: boolean;
+  strategy?: RetrievalStrategy;
 };
 
 function formatSourceLine(s: BuiltContext["sources"][number]): string {
@@ -51,6 +53,7 @@ export function formatExplain(
   const { explain } = search;
   const out: string[] = [];
   out.push(`query: ${explain.query}`);
+  out.push(`strategy: ${explain.strategy}`);
   out.push(
     `topK=${explain.topK} rrfK=${explain.rrfK} minScore=${explain.minScore} maxFused=${explain.maxFusedScore.toFixed(4)}`,
   );
@@ -67,6 +70,16 @@ export function formatExplain(
       `  ${e.chunkId} dense#${dense} lexical#${lex} ` +
         `fused=${e.fusedScore.toFixed(4)} norm=${e.normalizedScore.toFixed(3)}`,
     );
+  }
+  if (explain.rerank) {
+    out.push("");
+    out.push(`rerank (${explain.rerank.reranker}):`);
+    for (const e of explain.rerank.entries) {
+      out.push(
+        `  ${e.chunkId} fused#${e.fusedRank} rerank=${e.rerankScore.toFixed(3)} ` +
+          `final=${e.finalScore.toFixed(3)}`,
+      );
+    }
   }
   out.push("");
   out.push("token budget:");
@@ -104,6 +117,7 @@ export function formatJson(
       context: context.text,
       sources: context.sources,
       explain: {
+        strategy: search.explain.strategy,
         topK: search.explain.topK,
         rrfK: search.explain.rrfK,
         minScore: search.explain.minScore,
@@ -111,6 +125,7 @@ export function formatJson(
         dense: search.explain.dense.map(toExplainCandidate),
         lexical: search.explain.lexical.map(toExplainCandidate),
         fused: search.explain.fused,
+        rerank: search.explain.rerank ?? null,
         dropped: context.dropped,
       },
     },
@@ -148,6 +163,7 @@ export async function runQuery(
     const search = await retriever.hybridSearch(query, {
       topK: options.topK,
       filter,
+      strategy: options.strategy,
     });
     const context = buildContext(search.results, config.retrieval.contextTokens);
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { RagError } from "../core/errors.js";
 import * as log from "../core/logger.js";
 import { runIngest } from "./commands/ingest.js";
@@ -9,6 +9,12 @@ import { runEval } from "./commands/eval.js";
 import { runStats } from "./commands/stats.js";
 import { runDoctor } from "./commands/doctor.js";
 import { runMcp } from "./commands/mcp.js";
+import { RETRIEVAL_STRATEGIES } from "../core/retriever.js";
+import type { RetrievalStrategy } from "../core/types.js";
+
+const strategyOption = (): Option =>
+  new Option("-s, --strategy <name>", "retrieval strategy (default: config)")
+    .choices(Object.keys(RETRIEVAL_STRATEGIES));
 
 type GlobalOptions = {
   collection?: string;
@@ -84,10 +90,16 @@ export function buildProgram(): Command {
     .option("--top-k <n>", "number of results to return", (v) => parseInt(v, 10))
     .option("--explain", "print both legs, RRF math, and budget decisions", false)
     .option("--json", "print a single JSON object to stdout", false)
+    .addOption(strategyOption())
     .action(
       async (
         query: string,
-        opts: { topK?: number; explain?: boolean; json?: boolean },
+        opts: {
+          topK?: number;
+          explain?: boolean;
+          json?: boolean;
+          strategy?: RetrievalStrategy;
+        },
         cmd: Command,
       ) => {
         const g = globals(cmd);
@@ -97,6 +109,7 @@ export function buildProgram(): Command {
             topK: opts.topK,
             explain: opts.explain,
             json: opts.json,
+            strategy: opts.strategy,
           });
         } catch (err) {
           fail(err);
@@ -110,10 +123,17 @@ export function buildProgram(): Command {
     .argument("<dataset>", "path to a golden dataset JSON file")
     .option("--top-k <n>", "retrieval cutoff k", (v) => parseInt(v, 10))
     .option("--json", "print the full report as JSON to stdout", false)
+    .addOption(strategyOption())
+    .option("--compare", "run every strategy and print a side-by-side table", false)
     .action(
       async (
         dataset: string,
-        opts: { topK?: number; json?: boolean },
+        opts: {
+          topK?: number;
+          json?: boolean;
+          strategy?: RetrievalStrategy;
+          compare?: boolean;
+        },
         cmd: Command,
       ) => {
         const g = globals(cmd);
@@ -122,6 +142,8 @@ export function buildProgram(): Command {
             collection: g.collection,
             topK: opts.topK,
             json: opts.json,
+            strategy: opts.strategy,
+            compare: opts.compare,
           });
         } catch (err) {
           fail(err);

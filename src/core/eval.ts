@@ -1,4 +1,4 @@
-import type { Retriever } from "./types.js";
+import type { RetrievalStrategy, Retriever } from "./types.js";
 
 /**
  * A single golden-dataset case. Relevance is anchored to the document
@@ -118,11 +118,13 @@ export async function evaluate(
   retriever: Retriever,
   dataset: EvalDataset,
   k: number,
+  options: { strategy?: RetrievalStrategy } = {},
 ): Promise<EvalReport> {
   const cases: CaseMetrics[] = [];
   for (const testCase of dataset.cases) {
     const { results } = await retriever.hybridSearch(testCase.query, {
       topK: k,
+      strategy: options.strategy,
     });
     const retrievedSources = results.map(
       (r) => r.chunk.source ?? r.chunk.documentId,

@@ -6,15 +6,22 @@ import {
   evaluate,
   formatReportMarkdown,
   type EvalDataset,
+  type EvalReport,
 } from "../../core/eval.js";
 import { EvalDatasetError } from "../../core/errors.js";
-import { HybridRetriever } from "../../core/retriever.js";
+import {
+  HybridRetriever,
+  RETRIEVAL_STRATEGIES,
+} from "../../core/retriever.js";
+import type { RetrievalStrategy } from "../../core/types.js";
 import { openStore } from "./ingest.js";
 
 export type EvalCommandOptions = {
   collection?: string;
   topK?: number;
   json?: boolean;
+  strategy?: RetrievalStrategy;
+  compare?: boolean;
 };
 
 const DatasetSchema = z.object({
@@ -78,7 +85,23 @@ export async function runEval(
     const embedder = createEmbedder(config, db);
     const retriever = new HybridRetriever({ store, embedder, config });
 
-    const report = await evaluate(retriever, dataset, k);
+    if (options.compare) {
+      const strategies = Object.keys(RETRIEVAL_STRATEGIES) as RetrievalStrategy[];
+      const reports: Array<{ strategy: RetrievalStrategy; report: EvalReport }> = [];
+      for (const strategy of strategies) {
+        const report = await evaluate(retriever, dataset, k, { strategy });
+        reports.push({ strategy, report });
+      }
+      const output = options.json
+        ? JSON.stringify(reports, null, 2)
+        : formatComparisonMarkdown(dataset.name, k, embedder.model, reports);
+      process.stdout.write(`${output}\n`);
+      return;
+    }
+
+    const report = await evaluate(retriever, dataset, k, {
+      strategy: options.strategy,
+    });
 
     const output = options.json
       ? JSON.stringify(report, null, 2)
@@ -87,4 +110,31 @@ export async function runEval(
   } finally {
     db.close();
   }
+}
+
+/**
+ * One row per strategy, aggregate metrics only, so the effect of each
+ * retrieval stage is visible at a glance.
+ */
+export function formatComparisonMarkdown(
+  datasetName: string,
+  k: number,
+  embedModel: string,
+  reports: Array<{ strategy: RetrievalStrategy; report: EvalReport }>,
+): string {
+  const f = (v: number): string => v.toFixed(3);
+  const lines = [
+    `# Strategy comparison — ${datasetName} (k=${k}, embeddings: ${embedModel})`,
+    "",
+    "| strategy | what it does | hit | MRR | nDCG | precision | recall |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
+  ];
+  for (const { strategy, report } of reports) {
+    const a = report.aggregate;
+    lines.push(
+      `| ${strategy} | ${RETRIEVAL_STRATEGIES[strategy].description} | ` +
+        `${f(a.hitRate)} | ${f(a.mrr)} | ${f(a.ndcg)} | ${f(a.precision)} | ${f(a.recall)} |`,
+    );
+  }
+  return lines.join("\n");
 }

@@ -1,0 +1,183 @@
+{
+  "name": "fastapi-tutorial",
+  "cases": [
+    {
+      "id": "cors",
+      "query": "How do I let a frontend on another origin call my API?",
+      "relevantSources": [
+        "cors.md"
+      ]
+    },
+    {
+      "id": "background",
+      "query": "run a function after returning the response, like sending an email",
+      "relevantSources": [
+        "background-tasks.md"
+      ]
+    },
+    {
+      "id": "upload",
+      "query": "how do I receive an uploaded file in an endpoint",
+      "relevantSources": [
+        "request-files.md",
+        "request-forms-and-files.md"
+      ]
+    },
+    {
+      "id": "http-exception",
+      "query": "return a 404 error with a custom message",
+      "relevantSources": [
+        "handling-errors.md"
+      ]
+    },
+    {
+      "id": "status-code",
+      "query": "change the default status code to 201 when creating an item",
+      "relevantSources": [
+        "response-status-code.md"
+      ]
+    },
+    {
+      "id": "response-model",
+      "query": "filter output data so the password is not returned",
+      "relevantSources": [
+        "response-model.md",
+        "extra-models.md"
+      ]
+    },
+    {
+      "id": "query-validation",
+      "query": "limit a query string parameter to a maximum length",
+      "relevantSources": [
+        "query-params-str-validations.md"
+      ]
+    },
+    {
+      "id": "path-numeric",
+      "query": "require a path parameter to be greater than zero",
+      "relevantSources": [
+        "path-params-numeric-validations.md"
+      ]
+    },
+    {
+      "id": "enum-path",
+      "query": "restrict a path parameter to a fixed set of predefined values",
+      "relevantSources": [
+        "path-params.md"
+      ]
+    },
+    {
+      "id": "nested-models",
+      "query": "request body with a list of sub-objects inside a model",
+      "relevantSources": [
+        "body-nested-models.md"
+      ]
+    },
+    {
+      "id": "partial-update",
+      "query": "update only some fields of an item with PATCH",
+      "relevantSources": [
+        "body-updates.md"
+      ]
+    },
+    {
+      "id": "jsonable",
+      "query": "convert a Pydantic model to something JSON compatible to store in a database",
+      "relevantSources": [
+        "encoder.md"
+      ]
+    },
+    {
+      "id": "middleware",
+      "query": "add a header with the processing time to every response",
+      "relevantSources": [
+        "middleware.md"
+      ]
+    },
+    {
+      "id": "yield-deps",
+      "query": "open a database session and close it after the request finishes",
+      "relevantSources": [
+        "dependencies/dependencies-with-yield.md",
+        "sql-databases.md"
+      ]
+    },
+    {
+      "id": "global-deps",
+      "query": "apply a dependency to every endpoint of the application",
+      "relevantSources": [
+        "dependencies/global-dependencies.md"
+      ]
+    },
+    {
+      "id": "routers",
+      "query": "split a big app into multiple files with APIRouter",
+      "relevantSources": [
+        "bigger-applications.md"
+      ]
+    },
+    {
+      "id": "testing",
+      "query": "write tests for my API using TestClient and pytest",
+      "relevantSources": [
+        "testing.md"
+      ]
+    },
+    {
+      "id": "jwt",
+      "query": "hash passwords and issue JWT access tokens",
+      "relevantSources": [
+        "security/oauth2-jwt.md"
+      ]
+    },
+    {
+      "id": "current-user",
+      "query": "get the logged in user from the token inside a path operation",
+      "relevantSources": [
+        "security/get-current-user.md"
+      ]
+    },
+    {
+      "id": "static",
+      "query": "serve images and CSS files from a directory",
+      "relevantSources": [
+        "static-files.md"
+      ]
+    },
+    {
+      "id": "headers",
+      "query": "read a custom header like User-Agent",
+      "relevantSources": [
+        "header-params.md"
+      ]
+    },
+    {
+      "id": "cookies",
+      "query": "read a cookie value in an endpoint",
+      "relevantSources": [
+        "cookie-params.md"
+      ]
+    },
+    {
+      "id": "forms",
+      "query": "receive username and password from an HTML form instead of JSON",
+      "relevantSources": [
+        "request-forms.md"
+      ]
+    },
+    {
+      "id": "metadata",
+      "query": "set the title, version and description shown in the docs UI",
+      "relevantSources": [
+        "metadata.md"
+      ]
+    },
+    {
+      "id": "examples",
+      "query": "add example data to the JSON schema of a request body",
+      "relevantSources": [
+        "schema-extra-example.md"
+      ]
+    }
+  ]
+}
